@@ -1,9 +1,9 @@
 // Main application JS (module)
-import { loadProjectData, debouncedSave, importProject, exportProject } from './js/data.js';
-import { showSection, changeCurrentElementType } from './js/ui.js';
+import { loadProjectData, importProject, exportProject, exportScriptAsTxt } from './js/data.js';
+import { showSection, changeCurrentElementType, setSelection } from './js/ui.js';
 import { handleScriptKeydown, checkAutocomplete, handleAutocompleteSelection } from './js/handlers.js';
 import { state } from './js/state.js';
-import { initializeHistory } from './js/history.js';
+import { initializeHistory, pushState } from './js/history.js';
 
 // --- Initialize App ---
 function initializeApp() {
@@ -12,6 +12,7 @@ function initializeApp() {
     window.changeCurrentElementType = changeCurrentElementType;
     window.importProject = importProject;
     window.exportProject = exportProject;
+    window.exportScriptAsTxt = exportScriptAsTxt;
 
     loadProjectData();
     attachAppListeners();
@@ -20,10 +21,18 @@ function initializeApp() {
 
 // --- Attach listeners after data load ---
 function attachAppListeners() {
+    // --- Section Navigation ---
+    document.getElementById('nav-script').addEventListener('click', () => showSection('script'));
+    document.getElementById('nav-storyboard').addEventListener('click', () => showSection('storyboard'));
+    document.getElementById('nav-shotlist').addEventListener('click', () => showSection('shotlist'));
+
     const scriptEditor = document.getElementById('script-editor');
-    scriptEditor.addEventListener('keydown', handleScriptKeydown);
+    scriptEditor.addEventListener('keydown', (e) => {
+        handleScriptKeydown(e);
+        pushState(); // Push state on keydown in editor
+    });
     scriptEditor.addEventListener('input', () => {
-        debouncedSave();
+        // No autosave, but we can still check for autocomplete
         checkAutocomplete();
     });
 
@@ -33,6 +42,7 @@ function attachAppListeners() {
             state.autocomplete.selectedIndex = parseInt(e.target.dataset.index, 10);
             handleAutocompleteSelection();
             e.preventDefault(); // Prevent editor from losing focus
+            pushState(); // Push state after autocomplete
         }
     });
 
@@ -100,6 +110,7 @@ function attachAppListeners() {
                 scriptEditor.appendChild(newEl);
             }
             setSelection(newEl);
+            pushState(); // Push state after adding a new line
         }
     });
 
@@ -129,7 +140,7 @@ function attachAppListeners() {
                 </div>
             </div>`;
         grid.appendChild(panel);
-        debouncedSave();
+        pushState(); // Push state after adding a panel
     });
 
     document.getElementById('add-shot').addEventListener('click', () => {
@@ -150,7 +161,7 @@ function attachAppListeners() {
                 </button>
             </td>`;
         body.appendChild(row);
-        debouncedSave();
+        pushState(); // Push state after adding a shot
     });
 
     document.body.addEventListener('input', (e) => {
@@ -163,11 +174,12 @@ function attachAppListeners() {
                     const container = e.target.closest('.sb-image-container');
                     container.classList.add('has-image');
                     container.querySelector('.sb-image').src = event.target.result;
-                    debouncedSave();
+                    pushState(); // Push state after adding image
                 };
                 reader.readAsDataURL(file);
             } else {
-                debouncedSave();
+                // For other inputs like textareas
+                pushState();
             }
         }
     });
@@ -179,7 +191,7 @@ function attachAppListeners() {
             document.querySelectorAll('#storyboard-grid .storyboard-panel').forEach((panel, index) => {
                 panel.querySelector('h3').textContent = `Panel ${index + 1}`;
             });
-            debouncedSave();
+            pushState(); // Push state after deleting panel
         }
 
         const deleteShotButton = e.target.closest('.delete-shot');
@@ -188,7 +200,7 @@ function attachAppListeners() {
             document.querySelectorAll('#shot-list-body .shot-list-row').forEach((row, index) => {
                 row.querySelector('.shot-number').textContent = index + 1;
             });
-            debouncedSave();
+            pushState(); // Push state after deleting shot
         }
 
         const imageContainer = e.target.closest('.sb-image-container');
@@ -202,7 +214,7 @@ function attachAppListeners() {
             container.classList.remove('has-image');
             container.querySelector('.sb-image').src = '';
             container.querySelector('.sb-image-input').value = '';
-            debouncedSave();
+            pushState(); // Push state after removing image
         }
     });
 
@@ -221,7 +233,7 @@ function attachAppListeners() {
                     const container = panel.querySelector('.sb-image-container');
                     container.classList.add('has-image');
                     container.querySelector('.sb-image').src = event.target.result;
-                    debouncedSave();
+                    pushState(); // Push state after pasting image
                 };
                 reader.readAsDataURL(blob);
                 break;
@@ -259,7 +271,7 @@ function attachAppListeners() {
                     const container = panel.querySelector('.sb-image-container');
                     container.classList.add('has-image');
                     container.querySelector('.sb-image').src = event.target.result;
-                    debouncedSave();
+                    pushState(); // Push state after dropping image
                 };
                 reader.readAsDataURL(file);
             }
@@ -282,7 +294,7 @@ function attachAppListeners() {
                 document.querySelectorAll('#storyboard-grid .storyboard-panel').forEach((panel, index) => {
                     panel.querySelector('h3').textContent = `Panel ${index + 1}`;
                 });
-                debouncedSave();
+                pushState(); // Push state after reordering
             }
         });
     }
@@ -296,7 +308,35 @@ function attachAppListeners() {
                 document.querySelectorAll('#shot-list-body .shot-list-row').forEach((row, index) => {
                     row.querySelector('.shot-number').textContent = index + 1;
                 });
-                debouncedSave();
+                pushState(); // Push state after reordering
+            }
+        });
+    }
+
+    // Format Dropdown Logic
+    const dropdownButton = document.getElementById('format-dropdown-button');
+    const dropdownMenu = document.getElementById('format-dropdown-menu');
+    const dropdownContainer = document.getElementById('format-dropdown-container');
+
+    if (dropdownButton && dropdownMenu && dropdownContainer) {
+        dropdownButton.addEventListener('click', () => {
+            dropdownMenu.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!dropdownContainer.contains(e.target)) {
+                dropdownMenu.classList.add('hidden');
+            }
+        });
+
+        dropdownMenu.addEventListener('click', (e) => {
+            if (e.target.matches('.format-dropdown-item')) {
+                e.preventDefault();
+                const type = e.target.dataset.type;
+                changeCurrentElementType(type);
+                dropdownButton.querySelector('span').textContent = e.target.textContent;
+                dropdownMenu.classList.add('hidden');
+                pushState(); // Push state after format change
             }
         });
     }

@@ -32,18 +32,6 @@ export function getProjectDataFromDOM() {
     return { scriptContent, storyboardPanels, shotList };
 }
 
-export function renderProjectDataToDOM(data) {
-    const editor = document.getElementById('script-editor');
-    if (data.scriptContent) {
-        editor.innerHTML = data.scriptContent;
-    } else {
-        editor.innerHTML = '<div class="script-scene-heading">SCENE 1</div><div class="script-action"></div>';
-    }
-
-    renderStoryboards(data.storyboardPanels || []);
-    renderShotlist(data.shotList || []);
-}
-
 export async function saveProjectData() {
     if (state.isRestoring) {
         state.isRestoring = false; // Reset flag after restoration is complete
@@ -54,7 +42,8 @@ export async function saveProjectData() {
         const projectData = getProjectDataFromDOM();
         localStorage.setItem(state.LOCAL_STORAGE_KEY, JSON.stringify(projectData));
         setSaveStatus('saved');
-        pushState(); // Push state after a successful save
+        // We will now call this from specific actions
+        // pushState(); 
     } catch (error) {
         console.error("Error saving project data to local storage: ", error);
         setSaveStatus('error');
@@ -75,20 +64,15 @@ export async function loadProjectData() {
                  shotList: []
             };
             renderProjectDataToDOM(defaultData);
-            await saveProjectData();
+            // Don't auto-save on first load
+            // await saveProjectData();
         }
-        setSaveStatus('saved');
+        setSaveStatus('loaded'); // New status
     } catch (error) {
         console.error("Error loading project data from local storage: ", error);
         setSaveStatus('error');
     }
 }
-
-export function debouncedSave() {
-    setSaveStatus('saving');
-    clearTimeout(state.saveTimeout);
-    state.saveTimeout = setTimeout(saveProjectData, 1500);
-};
 
 export function exportProject() {
     const data = getProjectDataFromDOM();
@@ -161,7 +145,9 @@ export function importProject() {
                 if (data && data.scriptContent !== undefined) {
                     renderProjectDataToDOM(data);
                     setSaveStatus('imported');
-                    saveProjectData(); // This will also push the new state to history
+                    // Don't save on import, let user save manually
+                    // saveProjectData(); 
+                    pushState(); // But do record this as a history state
                 } else {
                     throw new Error("Invalid project file format.");
                 }
