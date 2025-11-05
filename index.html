@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Production Toolkit V2.2</title>
+    <!-- Tailwind CDN for utility classes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Load Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- App styles -->
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body class="bg-gray-100">
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="import-file-input" accept=".json" class="hidden">
+
+    <div class="max-w-7xl mx-auto p-4 md:p-8">
+        <header class="mb-6">
+            <div class="flex justify-between items-center mb-2">
+                 <h1 class="text-3xl font-bold text-gray-900">Mini Production Toolkit V2.2</h1>
+                 <!-- Save Status Indicator -->
+                <div id="save-status" class="text-sm font-medium text-gray-500 bg-gray-200 px-3 py-1 rounded-full">
+                    Loading...
+                </div>
+            </div>
+           <div class="flex justify-between items-center">
+                <p class="text-gray-600 mt-1">A lightweight tool for script formatting, storyboarding, and shot lists.</p>
+                <div class="flex space-x-2">
+                    <button id="import-button" class="header-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block -mt-1 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        Import
+                    </button>
+                    <button id="export-button" class="header-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline-block -mt-1 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Export
+                    </button>
+                </div>
+           </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="flex space-x-2 bg-white p-2 rounded-lg shadow-sm mb-6">
+            <button id="nav-script" class="nav-button nav-button-active" onclick="showSection('script')">
+                Script Editor
+            </button>
+            <button id="nav-storyboard" class="nav-button nav-button-inactive" onclick="showSection('storyboard')">
+                Storyboard
+            </button>
+            <button id="nav-shotlist" class="nav-button nav-button-inactive" onclick="showSection('shotlist')">
+                Shot List
+            </button>
+        </nav>
+
+        <!-- == SECTION 1: SMART SCRIPT EDITOR == -->
+        <section id="section-script" class="relative">
+            <div class="mb-4 p-4 border border-blue-200 bg-blue-50 rounded-lg">
+                <h4 class="font-semibold text-blue-800">Smart Script Editor</h4>
+                <p class="text-sm text-blue-700">Use the touch-friendly format buttons on the right, or standard keyboard shortcuts.</p>
+            </div>
+            
+            <!-- Script Formatting Panel -->
+            <div id="script-format-panel">
+                 <h5 class="text-xs font-semibold text-gray-500 uppercase px-3 pt-2 pb-1">Format</h5>
+                 <div class="space-y-1 p-1">
+                    <button class="format-button" onclick="changeCurrentElementType('script-scene-heading')">Scene Heading</button>
+                    <button class="format-button" onclick="changeCurrentElementType('script-action')">Action</button>
+                    <button class="format-button" onclick="changeCurrentElementType('script-character')">Character</button>
+                    <button class="format-button" onclick="changeCurrentElementType('script-dialog')">Dialogue</button>
+                    <button class="format-button" onclick="changeCurrentElementType('script-parenthetical')">Parenthetical</button>
+                    <button class="format-button" onclick="changeCurrentElementType('script-transition')">Transition</button>
+                 </div>
+            </div>
+            
+            <!-- The editor is now the main element -->
+            <div id="script-editor" contenteditable="true" spellcheck="false">
+                <!-- Content will be loaded from Firestore -->
+            </div>
+        </section>
+
+        <!-- == SECTION 2: STORYBOARD == -->
+        <section id="section-storyboard" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-gray-800">Storyboard</h2>
+                <button id="add-storyboard-panel" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700">
+                    Add Panel
+                </button>
+            </div>
+            <div id="storyboard-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Storyboard panels will be rendered here -->
+            </div>
+        </section>
+
+        <!-- == SECTION 3: SHOT LIST == -->
+        <section id="section-shotlist" class="hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-gray-800">Shot List</h2>
+                <button id="add-shot" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700">
+                    Add Shot
+                </button>
+            </div>
+            <div class="bg-white shadow-md rounded-lg overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">Shot #</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">Scene #</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Shot Type</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="shot-list-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Shot list rows will be rendered here -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- App JavaScript -->
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
